@@ -104,5 +104,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        # Bu job kendi izole ortamında ayrıca `pnpm install` çalıştırıyor —
+        # test job'undaki aynı sebeple (bkz. o job'daki yorum) burada da
+        # açıkça çalıştırılmadan `tsc --noEmit`, `@prisma/client`'ın
+        # üretilmemiş tiplerinde başarısız olur.
+        run: pnpm --filter core exec prisma generate
+
       - name: Build
         run: pnpm -w build
