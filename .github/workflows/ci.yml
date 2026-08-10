@@ -70,6 +70,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma Client
+        # pnpm install'ın örtük postinstall'ı bu pnpm workspace düzeninde
+        # şemayı bulamayıp sessizce atlıyor (@prisma/client postinstall
+        # log'unda "could not find your Prisma schema" uyarısı) — Client
+        # üretilmeden `Prisma.Decimal`/`PrismaClient` kullanan hiçbir kod
+        # çalışmaz, bu yüzden burada açıkça çalıştırılır.
+        run: pnpm --filter core exec prisma generate
+
       - name: Apply Prisma migrations
         run: pnpm --filter core exec prisma migrate deploy
 
