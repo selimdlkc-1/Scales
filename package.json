@@ -7,6 +7,8 @@
   },
   "scripts": {
     "lint": "eslint .",
+    "test": "pnpm -r run test",
+    "test:coverage": "pnpm -r run test:coverage",
     "build": "pnpm -r run build",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
