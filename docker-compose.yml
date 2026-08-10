@@ -1,0 +1,17 @@
+name: terazi
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: terazi
+      POSTGRES_USER: terazi
+      POSTGRES_PASSWORD: terazi
+    ports:
+      - "5432:5432"
+    volumes:
+      - terazi_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  terazi_postgres_data:
