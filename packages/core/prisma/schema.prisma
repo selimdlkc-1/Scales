@@ -1,0 +1,110 @@
+// Terazi — Prisma schema
+// Kaynak: docs/02_DATABASE_SCHEMA.md §1-5
+// CHECK constraint'leri ve partial index Prisma tarafından native üretilemez;
+// ilk migration.sql'e elle eklenir (bkz. packages/core/prisma/migrations/<ts>_init/migration.sql).
+//
+// Not: BIGSERIAL PK, Prisma 5'te `BigInt @id @default(autoincrement())` ile ifade edilir
+// (Prisma CLI 5.22, "Int + @db.BigInt" kombinasyonunu artık reddediyor — native tip scalar
+// tipiyle uyumlu olmalı). JS tarafında bu alanlar `bigint` primitive olarak gelir;
+// API katmanında JSON serileştirmesi Faz 3'te ele alınır.
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// docs/02_DATABASE_SCHEMA.md §2.1 — 4 satırlık statik referans verisi (seed ile yönetilir).
+model AssetClass {
+  /// BIGSERIAL PK.
+  id        BigInt   @id @default(autoincrement())
+  /// 'fx' | 'gold' | 'crypto' | 'fund' — CHECK migration.sql'de elle eklenir.
+  code      String   @db.VarChar(20)
+  nameTr    String   @map("name_tr") @db.VarChar(50)
+  sortOrder Int      @default(0) @map("sort_order") @db.SmallInt
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  assets Asset[]
+
+  @@unique([code])
+  @@map("asset_classes")
+}
+
+/// docs/02_DATABASE_SCHEMA.md §2.2
+model Asset {
+  id           BigInt   @id @default(autoincrement())
+  assetClassId BigInt   @map("asset_class_id")
+  /// Benzersiz kısa kod (USDTRY, XAUTRY, BTC, TEFAS:AFA).
+  symbol       String   @db.VarChar(30)
+  nameTr       String   @map("name_tr") @db.VarChar(120)
+  /// 'tcmb' | 'tefas' | 'coingecko' — CHECK migration.sql'de elle eklenir.
+  dataSource   String   @map("data_source") @db.VarChar(20)
+  externalRef  String   @map("external_ref") @db.VarChar(60)
+  currency     String   @default("TRY") @db.VarChar(3)
+  /// Soft-delete bayrağı (docs/02 §7) — false ise karşılaştırma tablosunda gösterilmez.
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  assetClass AssetClass   @relation(fields: [assetClassId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  prices     AssetPrice[]
+
+  @@unique([symbol])
+  @@index([assetClassId])
+  @@index([isActive])
+  @@map("assets")
+}
+
+/// docs/02_DATABASE_SCHEMA.md §2.3 — append-only zaman serisi.
+model AssetPrice {
+  id        BigInt   @id @default(autoincrement())
+  assetId   BigInt   @map("asset_id")
+  /// Fiyatın ait olduğu gerçek tarih.
+  asOfDate  DateTime @map("as_of_date") @db.Date
+  /// TL cinsinden fiyat — CHECK (price > 0) migration.sql'de elle eklenir.
+  price     Decimal  @db.Decimal(20, 6)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  /// İdempotent upsert garantisi [I-005] + dönem bazlı aralık sorgusu.
+  @@unique([assetId, asOfDate])
+  @@index([assetId, asOfDate(sort: Desc)])
+  @@map("asset_prices")
+}
+
+/// docs/02_DATABASE_SCHEMA.md §2.4 — append-only, `assets`e FK ile bağlı değil.
+model CpiIndex {
+  id          BigInt   @id @default(autoincrement())
+  /// 'YYYY-MM' formatı.
+  periodMonth String   @map("period_month") @db.Char(7)
+  /// CHECK (index_value > 0) migration.sql'de elle eklenir.
+  indexValue  Decimal  @map("index_value") @db.Decimal(12, 4)
+  asOfDate    DateTime @map("as_of_date") @db.Date
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([periodMonth])
+  @@map("cpi_index")
+}
+
+/// docs/02_DATABASE_SCHEMA.md §2.5 — operasyonel kayıt, append-only.
+model JobRun {
+  id              BigInt    @id @default(autoincrement())
+  /// 'tcmb' | 'tefas' | 'coingecko' — CHECK migration.sql'de elle eklenir.
+  dataSource      String    @map("data_source") @db.VarChar(20)
+  /// 'pending' | 'running' | 'success' | 'partial' | 'failed' — CHECK migration.sql'de elle eklenir.
+  status          String    @default("pending") @db.VarChar(10)
+  startedAt       DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt      DateTime? @map("finished_at") @db.Timestamptz(6)
+  recordsUpserted Int       @default(0) @map("records_upserted")
+  errorMessage    String?   @map("error_message") @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([dataSource, startedAt(sort: Desc)])
+  @@map("job_runs")
+}
