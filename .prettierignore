@@ -1,0 +1,11 @@
+node_modules
+dist
+.next
+coverage
+pnpm-lock.yaml
+
+# Doküman seti (docs-architect/rules-architect tarafından yönetilir);
+# genel formatter buradaki Türkçe prosa/tabloları yeniden biçimlendirmez.
+docs/
+CLAUDE.md
+.claude/
