@@ -1,5 +1,15 @@
 export { prisma } from './prisma/client.js';
 
+// calculations — reel/normalize edilmiş getiri için tek kaynak hesap
+// fonksiyonları; packages/core dışında hiçbir katmanda yeniden implemente
+// edilmez (docs/01_DOMAIN_MODEL.md §6).
+export { calculateNominalReturn } from './calculations/nominal-return.js';
+export type { DecimalInput } from './calculations/nominal-return.js';
+export { calculateCpiChange, calculateRealReturn } from './calculations/real-return.js';
+export type { RealReturnInput } from './calculations/real-return.js';
+export { calculateNormalizedReturnSeries } from './calculations/normalized-return.js';
+export type { NormalizedReturnPoint, PricePoint } from './calculations/normalized-return.js';
+
 // schemas/api — Next.js route handler'larının query doğrulaması için.
 export { comparisonQuerySchema } from './schemas/api/comparison-query.js';
 export type { ComparisonQuery } from './schemas/api/comparison-query.js';
