@@ -4,9 +4,9 @@
 // docs/07_SECURITY_IMPLEMENTATION.md §1, §6 (SEC-007 — TEFAS bu projenin en kritik
 // dış kaynak doğrulama noktasıdır: resmî olmayan, kırılgan kaynak).
 //
-// Not (bu iterasyona özgü): retry/backoff ve JobRun durum geçişleri, tcmb-job.ts ile
-// aynı desende burada da inline yazılmıştır — ortak bir helper'a çıkarma İterasyon 4'te
-// (§2.4) yapılacak; tcmb-job.ts bu iterasyonda dokunulmaz.
+// Retry/backoff ve JobRun durum geçişleri ortak `lib/job-lifecycle.ts` + `lib/retry.ts`
+// helper'larından kullanılır (Faz 2 §2.4 refactor, davranış İterasyon 2'dekiyle
+// birebir aynıdır — inline kopya kaldırılmıştır, TCMB/CoinGecko de aynı helper'ı kullanır).
 import { Prisma } from '@prisma/client';
 import {
   prisma,
@@ -17,18 +17,13 @@ import {
 } from '@terazi/core';
 
 import { fetchTefasHistory } from '../clients/tefas-client.js';
+import { createPendingJobRun, finishJobRun, markRunning } from '../lib/job-lifecycle.js';
+import { withRetry } from '../lib/retry.js';
 
 const DATA_SOURCE = 'tefas';
 
 /** Kaynak veri her iş günü çekilir; tatil/hafta sonu boşluklarını telafi etmek için geriye dönük pencere. */
 const LOOKBACK_DAYS = 10;
-
-/**
- * docs/04_BACKEND_SPEC.md §8: dış API çağrısı başarısız olursa aynı çalıştırma
- * içinde exponansiyel backoff ile tekrar denenir (1s → 2s → 4s bekleme) — toplam
- * 1 ilk deneme + 3 tekrar deneme = 4 deneme.
- */
-const RETRY_DELAYS_MS = [1000, 2000, 4000];
 
 export type TefasJobStatus = 'success' | 'partial' | 'failed';
 
@@ -36,27 +31,6 @@ export interface TefasJobResult {
   jobRunId: bigint;
   status: TefasJobStatus;
   recordsUpserted: number;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (attempt < RETRY_DELAYS_MS.length) {
-        await sleep(RETRY_DELAYS_MS[attempt] ?? 0);
-      }
-    }
-  }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error('TEFAS BindHistoryInfo isteği bilinmeyen nedenle başarısız oldu');
 }
 
 function getDefaultDateRange(referenceDate: Date = new Date()): { startDate: Date; endDate: Date } {
@@ -86,18 +60,6 @@ function parsePositiveDecimal(value: string): Prisma.Decimal | null {
   }
 }
 
-async function finalizeJobRun(
-  jobRunId: bigint,
-  status: TefasJobStatus,
-  recordsUpserted: number,
-  errorMessage: string | null,
-): Promise<void> {
-  await prisma.jobRun.update({
-    where: { id: jobRunId },
-    data: { status, finishedAt: new Date(), recordsUpserted, errorMessage },
-  });
-}
-
 /**
  * TEFAS job — docs/04_BACKEND_SPEC.md §7'deki 3 adımlı akış:
  * (1) `job_runs`'a `pending` satırı ekle, (2) client çağrısı (retry'li) + zarf
@@ -110,14 +72,8 @@ async function finalizeJobRun(
  * durdurmaz, yalnızca o kayıt atlanır.
  */
 export async function runTefasJob(): Promise<TefasJobResult> {
-  const jobRun = await prisma.jobRun.create({
-    data: { dataSource: DATA_SOURCE, status: 'pending' },
-  });
-
-  await prisma.jobRun.update({
-    where: { id: jobRun.id },
-    data: { status: 'running', startedAt: new Date() },
-  });
+  const jobRun = await createPendingJobRun(DATA_SOURCE);
+  await markRunning(jobRun.id);
 
   try {
     const assets = await prisma.asset.findMany({
@@ -131,7 +87,11 @@ export async function runTefasJob(): Promise<TefasJobResult> {
     const envelope = tefasResponseSchema.safeParse(rawResponse);
     if (!envelope.success) {
       const message = `TEFAS yanıt zarfı doğrulanamadı: ${envelope.error.message}`;
-      await finalizeJobRun(jobRun.id, 'failed', 0, message);
+      await finishJobRun(jobRun.id, {
+        status: 'failed',
+        recordsUpserted: 0,
+        errorMessage: message,
+      });
       return { jobRunId: jobRun.id, status: 'failed', recordsUpserted: 0 };
     }
 
@@ -141,7 +101,11 @@ export async function runTefasJob(): Promise<TefasJobResult> {
       // geçerli ama hiç kayıt yok. Bu, tek tek kayıt doğrulamasından farklıdır (aşağı)
       // ve işlenebilir hiçbir veri bulunamadığı anlamına gelir.
       const message = 'TEFAS yanıtında hiç kayıt yok (data boş dizi)';
-      await finalizeJobRun(jobRun.id, 'failed', 0, message);
+      await finishJobRun(jobRun.id, {
+        status: 'failed',
+        recordsUpserted: 0,
+        errorMessage: message,
+      });
       return { jobRunId: jobRun.id, status: 'failed', recordsUpserted: 0 };
     }
 
@@ -182,7 +146,11 @@ export async function runTefasJob(): Promise<TefasJobResult> {
       // (yanlış tarih aralığı vb.), TCMB job'undaki "işlenebilir kayıt yok" durumuyla
       // aynı muamele görür.
       const message = 'İzlenen fonlardan hiçbiri TEFAS yanıtında bulunamadı';
-      await finalizeJobRun(jobRun.id, 'failed', 0, message);
+      await finishJobRun(jobRun.id, {
+        status: 'failed',
+        recordsUpserted: 0,
+        errorMessage: message,
+      });
       return { jobRunId: jobRun.id, status: 'failed', recordsUpserted: 0 };
     }
 
@@ -197,11 +165,11 @@ export async function runTefasJob(): Promise<TefasJobResult> {
       skippedCount > 0
         ? `${skippedCount} kayıt şema doğrulamasından geçemediği için atlandı`
         : null;
-    await finalizeJobRun(jobRun.id, status, upserts.length, errorMessage);
+    await finishJobRun(jobRun.id, { status, recordsUpserted: upserts.length, errorMessage });
     return { jobRunId: jobRun.id, status, recordsUpserted: upserts.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
-    await finalizeJobRun(jobRun.id, 'failed', 0, message);
+    await finishJobRun(jobRun.id, { status: 'failed', recordsUpserted: 0, errorMessage: message });
     return { jobRunId: jobRun.id, status: 'failed', recordsUpserted: 0 };
   }
 }
