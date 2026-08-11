@@ -8,7 +8,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "run:tcmb": "tsx src/entrypoints/run-tcmb.ts",
-    "run:tefas": "tsx src/entrypoints/run-tefas.ts"
+    "run:tefas": "tsx src/entrypoints/run-tefas.ts",
+    "run:coingecko": "tsx src/entrypoints/run-coingecko.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
