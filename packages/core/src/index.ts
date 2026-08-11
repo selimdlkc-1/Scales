@@ -1,5 +1,15 @@
 export { prisma } from './prisma/client.js';
 
+// errors — domain exception hiyerarşisi; API route handler'ları bu sınıfları
+// throw eder (docs/04_BACKEND_SPEC.md §6).
+export {
+  AssetNotFoundError,
+  InvalidAssetSelectionError,
+  TeraziError,
+  UnauthorizedError,
+  ValidationError,
+} from './errors.js';
+
 // calculations — reel/normalize edilmiş getiri için tek kaynak hesap
 // fonksiyonları; packages/core dışında hiçbir katmanda yeniden implemente
 // edilmez (docs/01_DOMAIN_MODEL.md §6).
