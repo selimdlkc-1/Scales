@@ -1,0 +1,48 @@
+{
+  "draw": 1,
+  "recordsTotal": 7,
+  "recordsFiltered": 7,
+  "data": [
+    {
+      "TARIH": "/Date(1754352000000)/",
+      "FONKODU": "AFO",
+      "FONUNVAN": "Ak Portföy Altın Fonu",
+      "FIYAT": 1.234567
+    },
+    {
+      "TARIH": "/Date(1754352000000)/",
+      "FONKODU": "AAV",
+      "FONUNVAN": "Ata Portföy İkinci Hisse Senedi Fonu",
+      "FIYAT": 0.045123
+    },
+    {
+      "TARIH": "/Date(1754352000000)/",
+      "FONKODU": "BBF",
+      "FONUNVAN": "Pardus Portföy Birinci Borçlanma Araçları Fonu",
+      "FIYAT": 12.5
+    },
+    {
+      "TARIH": "/Date(1754438400000)/",
+      "FONUNVAN": "Ak Portföy Altın Fonu (FONKODU eksik)",
+      "FIYAT": 1.256789
+    },
+    {
+      "TARIH": "/Date(1754438400000)/",
+      "FONKODU": "AAV",
+      "FONUNVAN": "Ata Portföy İkinci Hisse Senedi Fonu (FIYAT beklenmeyen tip)",
+      "FIYAT": true
+    },
+    {
+      "TARIH": "/Date(1754438400000)/",
+      "FONKODU": "BBF",
+      "FONUNVAN": "Pardus Portföy Birinci Borçlanma Araçları Fonu (ondalık ayraç virgül)",
+      "FIYAT": "12,610000"
+    },
+    {
+      "TARIH": "/Date(1754438400000)/",
+      "FONKODU": "XYZ",
+      "FONUNVAN": "İzlenmeyen fon (kapsam dışı, hata değil)",
+      "FIYAT": 3.0
+    }
+  ]
+}
