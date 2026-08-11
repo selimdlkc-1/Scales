@@ -10,10 +10,10 @@ bir Railway **service**'e karşılık gelir ve o service'i Railway'in cron mekan
 Aynı repo/branch'ten üç ayrı service oluşturulur, her biri aşağıdaki config path'ine işaret eder
 (Settings → Config-as-code Path):
 
-| Service | Config path | Zamanlama (Europe/Istanbul) | Cron (UTC) |
-| --- | --- | --- | --- |
-| `terazi-worker-tcmb` | `railway/tcmb.json` | İş günü 18:30 | `30 15 * * 1-5` |
-| `terazi-worker-tefas` | `railway/tefas.json` | İş günü 18:30 | `30 15 * * 1-5` |
+| Service                   | Config path              | Zamanlama (Europe/Istanbul)          | Cron (UTC)               |
+| ------------------------- | ------------------------ | ------------------------------------ | ------------------------ |
+| `terazi-worker-tcmb`      | `railway/tcmb.json`      | İş günü 18:30                        | `30 15 * * 1-5`          |
+| `terazi-worker-tefas`     | `railway/tefas.json`     | İş günü 18:30                        | `30 15 * * 1-5`          |
 | `terazi-worker-coingecko` | `railway/coingecko.json` | Her 4 saatte bir (00/04/08/12/16/20) | `0 1,5,9,13,17,21 * * *` |
 
 İstanbul yaz saati uygulamıyor (sabit UTC+3), bu yüzden cron ifadeleri DST'ye göre ayrıca
@@ -28,13 +28,13 @@ Her üç service için:
 
 ## Ortam değişkenleri (service başına, `docs/04_BACKEND_SPEC.md §10`)
 
-| Değişken | tcmb | tefas | coingecko |
-| --- | --- | --- | --- |
-| `DATABASE_URL` | ✓ | ✓ | ✓ |
-| `TCMB_EVDS_API_KEY` | ✓ | — | — |
-| `COINGECKO_API_KEY` | — | — | ✓ (opsiyonel, ücretsiz katmanda zorunlu değil) |
-| `NODE_ENV=staging` / `production` | ✓ | ✓ | ✓ |
-| `LOG_LEVEL=info` | ✓ | ✓ | ✓ |
+| Değişken                          | tcmb | tefas | coingecko                                      |
+| --------------------------------- | ---- | ----- | ---------------------------------------------- |
+| `DATABASE_URL`                    | ✓    | ✓     | ✓                                              |
+| `TCMB_EVDS_API_KEY`               | ✓    | —     | —                                              |
+| `COINGECKO_API_KEY`               | —    | —     | ✓ (opsiyonel, ücretsiz katmanda zorunlu değil) |
+| `NODE_ENV=staging` / `production` | ✓    | ✓     | ✓                                              |
+| `LOG_LEVEL=info`                  | ✓    | ✓     | ✓                                              |
 
 Staging ortamı için kullanılan `TCMB_EVDS_API_KEY`/`COINGECKO_API_KEY` **production'dan ayrı,
 staging'e özel** olmalı (`docs/09_DEV_WORKFLOW.md §7`). Secret'lar yalnızca Railway proje
