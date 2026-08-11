@@ -7,7 +7,8 @@
     "build": "tsc --noEmit",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "run:tcmb": "tsx src/entrypoints/run-tcmb.ts"
+    "run:tcmb": "tsx src/entrypoints/run-tcmb.ts",
+    "run:tefas": "tsx src/entrypoints/run-tefas.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -1,0 +1,13 @@
+{
+  "draw": 1,
+  "recordsTotal": 6,
+  "recordsFiltered": 6,
+  "data": [
+    { "TARIH": "/Date(1754352000000)/", "FONKODU": "AFO", "FONUNVAN": "Ak Portföy Altın Fonu", "FIYAT": 1.234567 },
+    { "TARIH": "/Date(1754352000000)/", "FONKODU": "AAV", "FONUNVAN": "Ata Portföy İkinci Hisse Senedi Fonu", "FIYAT": 0.045123 },
+    { "TARIH": "/Date(1754352000000)/", "FONKODU": "BBF", "FONUNVAN": "Pardus Portföy Birinci Borçlanma Araçları Fonu", "FIYAT": 12.5 },
+    { "TARIH": "/Date(1754438400000)/", "FONKODU": "AFO", "FONUNVAN": "Ak Portföy Altın Fonu", "FIYAT": "1.256789" },
+    { "TARIH": "/Date(1754438400000)/", "FONKODU": "AAV", "FONUNVAN": "Ata Portföy İkinci Hisse Senedi Fonu", "FIYAT": 0.04598 },
+    { "TARIH": "/Date(1754438400000)/", "FONKODU": "BBF", "FONUNVAN": "Pardus Portföy Birinci Borçlanma Araçları Fonu", "FIYAT": "12.610000" }
+  ]
+}
