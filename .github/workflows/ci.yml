@@ -81,6 +81,12 @@ jobs:
       - name: Apply Prisma migrations
         run: pnpm --filter core exec prisma migrate deploy
 
+      - name: Seed reference data
+        # apps/web/app/api/asset-classes, apps/web/app/api/assets integration testleri
+        # (Faz 3 §3.1) idempotent seed'in doldurduğu asset_classes/assets satırlarını
+        # okur — docs/09_DEV_WORKFLOW.md §6 adım 5 ile aynı komut.
+        run: pnpm --filter core run db:seed
+
       - name: Test (coverage eşikleriyle)
         run: pnpm -w test:coverage
 
