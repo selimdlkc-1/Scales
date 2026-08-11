@@ -1,0 +1,25 @@
+{
+  "items": [
+    {
+      "Tarih": "05-08-2025",
+      "TP_DK_USD_A_YTL": "32,8551",
+      "TP_DK_EUR_A_YTL": "35,9012",
+      "TP_MK_ALTIN_YTL": "2450,75",
+      "TP_FG_J0": "2686,68"
+    },
+    {
+      "Tarih": "06-08-2025",
+      "TP_DK_USD_A_YTL": "32,9012",
+      "TP_DK_EUR_A_YTL": "35,9500",
+      "TP_MK_ALTIN_YTL": "2460,10",
+      "TP_FG_J0": null
+    },
+    {
+      "Tarih": "07-08-2025",
+      "TP_DK_USD_A_YTL": "32,9500",
+      "TP_DK_EUR_A_YTL": null,
+      "TP_MK_ALTIN_YTL": "2455,30",
+      "TP_FG_J0": null
+    }
+  ]
+}
