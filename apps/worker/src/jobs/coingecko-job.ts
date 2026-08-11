@@ -3,9 +3,9 @@
 // docs/04_BACKEND_SPEC.md §7-8, docs/01_DOMAIN_MODEL.md §5 (JobRun state machine),
 // docs/07_SECURITY_IMPLEMENTATION.md §6 (SEC-007).
 //
-// Not (bu iterasyona özgü): retry/backoff ve JobRun durum geçişleri, tcmb-job.ts/
-// tefas-job.ts ile aynı desende burada da inline yazılmıştır — ortak bir helper'a
-// çıkarma İterasyon 4'te (§2.4) yapılacak.
+// Retry/backoff ve JobRun durum geçişleri ortak `lib/job-lifecycle.ts` + `lib/retry.ts`
+// helper'larından kullanılır (Faz 2 §2.4 refactor, davranış İterasyon 3'tekiyle
+// birebir aynıdır — inline kopya kaldırılmıştır, TCMB/TEFAS de aynı helper'ı kullanır).
 //
 // Fark (docs/10 §2.3): CoinGecko'nun ücretsiz katmanında birden fazla coin'in geçmiş
 // fiyatını tek istekte dönen bir uç nokta yoktur — her coin ayrı ayrı, bağımsız
@@ -21,18 +21,13 @@ import {
 } from '@terazi/core';
 
 import { fetchCoingeckoMarketChart } from '../clients/coingecko-client.js';
+import { createPendingJobRun, finishJobRun, markRunning } from '../lib/job-lifecycle.js';
+import { withRetry } from '../lib/retry.js';
 
 const DATA_SOURCE = 'coingecko';
 
 /** market_chart `days` parametresi — kaç gün geriye dönük fiyat noktası istenecek. */
 const LOOKBACK_DAYS = 10;
-
-/**
- * docs/04_BACKEND_SPEC.md §8: dış API çağrısı başarısız olursa aynı çalıştırma
- * içinde exponansiyel backoff ile tekrar denenir (1s → 2s → 4s bekleme) — toplam
- * 1 ilk deneme + 3 tekrar deneme = 4 deneme. Bu, **her coin için ayrı ayrı** uygulanır.
- */
-const RETRY_DELAYS_MS = [1000, 2000, 4000];
 
 export type CoingeckoJobStatus = 'success' | 'partial' | 'failed';
 
@@ -40,27 +35,6 @@ export interface CoingeckoJobResult {
   jobRunId: bigint;
   status: CoingeckoJobStatus;
   recordsUpserted: number;
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function withRetry<T>(fn: () => Promise<T>): Promise<T> {
-  let lastError: unknown;
-  for (let attempt = 0; attempt <= RETRY_DELAYS_MS.length; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      lastError = error;
-      if (attempt < RETRY_DELAYS_MS.length) {
-        await sleep(RETRY_DELAYS_MS[attempt] ?? 0);
-      }
-    }
-  }
-  throw lastError instanceof Error
-    ? lastError
-    : new Error('CoinGecko market_chart isteği bilinmeyen nedenle başarısız oldu');
 }
 
 /**
@@ -103,18 +77,6 @@ function toLatestPricePerDay(
   return new Map([...latestByDay.entries()].map(([isoDate, point]) => [isoDate, point.price]));
 }
 
-async function finalizeJobRun(
-  jobRunId: bigint,
-  status: CoingeckoJobStatus,
-  recordsUpserted: number,
-  errorMessage: string | null,
-): Promise<void> {
-  await prisma.jobRun.update({
-    where: { id: jobRunId },
-    data: { status, finishedAt: new Date(), recordsUpserted, errorMessage },
-  });
-}
-
 /**
  * CoinGecko job — docs/04_BACKEND_SPEC.md §7'deki 3 adımlı akış: (1) `job_runs`'a
  * `pending` satırı ekle, (2) her coin için bağımsız retry'li client çağrısı +
@@ -123,14 +85,8 @@ async function finalizeJobRun(
  * içinde geçerli coin'lerin toplu upsert'i + `job_runs`'ı terminal durumla güncelle.
  */
 export async function runCoingeckoJob(): Promise<CoingeckoJobResult> {
-  const jobRun = await prisma.jobRun.create({
-    data: { dataSource: DATA_SOURCE, status: 'pending' },
-  });
-
-  await prisma.jobRun.update({
-    where: { id: jobRun.id },
-    data: { status: 'running', startedAt: new Date() },
-  });
+  const jobRun = await createPendingJobRun(DATA_SOURCE);
+  await markRunning(jobRun.id);
 
   try {
     const assets = await prisma.asset.findMany({
@@ -139,7 +95,11 @@ export async function runCoingeckoJob(): Promise<CoingeckoJobResult> {
 
     if (assets.length === 0) {
       const message = 'İzlenen coingecko varlığı bulunamadı';
-      await finalizeJobRun(jobRun.id, 'failed', 0, message);
+      await finishJobRun(jobRun.id, {
+        status: 'failed',
+        recordsUpserted: 0,
+        errorMessage: message,
+      });
       return { jobRunId: jobRun.id, status: 'failed', recordsUpserted: 0 };
     }
 
@@ -186,7 +146,11 @@ export async function runCoingeckoJob(): Promise<CoingeckoJobResult> {
         skippedCoinCount > 0
           ? `İşlenebilir kayıt bulunamadı, ${skippedCoinCount} coin çekilemedi/doğrulanamadı`
           : 'İşlenebilir hiçbir kayıt bulunamadı';
-      await finalizeJobRun(jobRun.id, 'failed', 0, message);
+      await finishJobRun(jobRun.id, {
+        status: 'failed',
+        recordsUpserted: 0,
+        errorMessage: message,
+      });
       return { jobRunId: jobRun.id, status: 'failed', recordsUpserted: 0 };
     }
 
@@ -195,11 +159,11 @@ export async function runCoingeckoJob(): Promise<CoingeckoJobResult> {
     const status: CoingeckoJobStatus = skippedCoinCount > 0 ? 'partial' : 'success';
     const errorMessage =
       skippedCoinCount > 0 ? `${skippedCoinCount} coin çekilemedi/doğrulanamadı, atlandı` : null;
-    await finalizeJobRun(jobRun.id, status, upserts.length, errorMessage);
+    await finishJobRun(jobRun.id, { status, recordsUpserted: upserts.length, errorMessage });
     return { jobRunId: jobRun.id, status, recordsUpserted: upserts.length };
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Bilinmeyen hata';
-    await finalizeJobRun(jobRun.id, 'failed', 0, message);
+    await finishJobRun(jobRun.id, { status: 'failed', recordsUpserted: 0, errorMessage: message });
     return { jobRunId: jobRun.id, status: 'failed', recordsUpserted: 0 };
   }
 }
