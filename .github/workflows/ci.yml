@@ -119,3 +119,76 @@ jobs:
 
       - name: Build
         run: pnpm -w build
+
+  e2e:
+    name: E2E Smoke
+    runs-on: ubuntu-latest
+    needs: lint
+    # docs/08_TESTING_STRATEGY.md §7: Playwright smoke e2e ayrı bir CI job'udur,
+    # build'i bloklamaz — bu yüzden `test`/`build`'e değil yalnızca `lint`'e
+    # bağımlıdır (paralel çalışır, sonucu görünür ama pipeline'ı durdurmaz).
+    # Kendi Postgres servis konteynerini kullanır — `test` job'unun paylaşımlı
+    # DB'sindeki worker job testleriyle (tcmb/tefas/coingecko-job.test.ts)
+    # fixture çakışması riski taşımaz (bkz. apps/web/e2e/fixtures/price-fixture.ts).
+    # `continue-on-error` bilinçli olarak KULLANILMAZ — job'un gerçek başarı/
+    # başarısızlık durumu görünür kalmalı ki merge öncesi insan onayı
+    # (docs/08 §7, [TEST-005]) gerçek sinyale dayansın; `build`/`test` zaten
+    # yalnızca `needs: test`/`needs: lint` zincirinde, `e2e`'ye bağımlı değil —
+    # bu job'un başarısız olması onları bloklamaz.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: terazi
+          POSTGRES_USER: terazi
+          POSTGRES_PASSWORD: terazi
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://terazi:terazi@localhost:5432/terazi
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm --filter web exec playwright install --with-deps chromium
+
+      - name: Generate Prisma Client
+        run: pnpm --filter core exec prisma generate
+
+      - name: Apply Prisma migrations
+        run: pnpm --filter core exec prisma migrate deploy
+
+      - name: Seed reference data
+        # asset_classes/assets (Faz 1 §1.3) — journey'lerin varlık seçimi ve
+        # tablo render'ı için önkoşul; fiyat fixture'ı ise Playwright
+        # `globalSetup`'ında ayrıca eklenir (apps/web/e2e/global-setup.ts).
+        run: pnpm --filter core run db:seed
+
+      - name: Run Playwright smoke e2e
+        run: pnpm --filter web run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report/
+          retention-days: 7

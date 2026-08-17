@@ -6,3 +6,8 @@ dist/
 coverage/
 *.tsbuildinfo
 .claude/settings.local.json
+
+# Playwright (apps/web/e2e — Faz 4 §4.5)
+apps/web/playwright-report/
+apps/web/test-results/
+apps/web/e2e/.e2e-fixture-plan.json
