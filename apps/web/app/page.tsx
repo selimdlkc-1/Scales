@@ -1,12 +1,16 @@
 import { Suspense } from 'react';
 
+import { InvalidAssetSelectionError } from '@terazi/core';
+
+import type { AssetSeriesDto } from '@/lib/fetchers/series-fetcher';
 import { getComparison } from '@/lib/services/comparison-service';
 import type {
   ComparisonPeriod,
   ComparisonSortBy,
   ComparisonSortDir,
 } from '@/lib/services/comparison-service';
-import { getAssetClasses } from '@/lib/services/reference-data-service';
+import { getAssetClasses, getAssets } from '@/lib/services/reference-data-service';
+import { getComparisonSeries } from '@/lib/services/series-service';
 
 import { ComparisonPanel } from './comparison-panel';
 
@@ -21,6 +25,10 @@ const VALID_SORT_DIR: readonly ComparisonSortDir[] = ['asc', 'desc'];
 const DEFAULT_PERIOD: ComparisonPeriod = '1y';
 const DEFAULT_SORT_BY: ComparisonSortBy = 'realReturn';
 const DEFAULT_SORT_DIR: ComparisonSortDir = 'desc';
+
+// Grafik varlık seçimi kısıtı (docs/06_SCREEN_CATALOG.md §4, docs/03_API_CONTRACTS.md §5.2).
+const MIN_CHART_ASSETS = 2;
+const MAX_CHART_ASSETS = 5;
 
 type QueryValue = string | string[] | undefined;
 
@@ -61,6 +69,16 @@ function parseClasses(value: QueryValue): string[] {
     .filter((code) => code.length > 0);
 }
 
+/** `assets` — grafik için seçilen sembol listesi (docs/05_FRONTEND_SPEC.md §2). */
+function parseAssets(value: QueryValue): string[] {
+  const raw = firstValue(value);
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((symbol) => symbol.trim())
+    .filter((symbol) => symbol.length > 0);
+}
+
 interface HomePageProps {
   // Next.js 15: `searchParams` Server Component'lerde Promise olarak gelir.
   searchParams: Promise<Record<string, QueryValue>>;
@@ -73,11 +91,38 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   const sortBy = parseSortBy(params.sortBy);
   const sortDir = parseSortDir(params.sortDir);
   const selectedClasses = parseClasses(params.classes);
+  const requestedAssets = parseAssets(params.assets);
 
-  const [comparisonResult, assetClasses] = await Promise.all([
+  const [comparisonResult, assetClasses, assets] = await Promise.all([
     getComparison({ period, sortBy, sortDir }),
     getAssetClasses(),
+    getAssets(),
   ]);
+
+  // Grafik seçimi — 5'ten fazla sembol elle URL manipülasyonuyla gelirse sessizce
+  // ilk 5'e kısaltılır (docs/05 §5 güvenlik ağı). 2-5 arası geçerli bir sayı varsa
+  // grafik verisi de ilk yüklemede server-side çekilir (docs/05 §4 ilkesiyle
+  // tutarlı — gereksiz bir client round-trip önlenir); backend `symbols`'ı
+  // çözerken 2'den az geçerli varlığa düşerse (`InvalidAssetSelectionError`)
+  // seçim sıfırlanır, sayfa çökmez.
+  let selectedAssets =
+    requestedAssets.length > MAX_CHART_ASSETS
+      ? requestedAssets.slice(0, MAX_CHART_ASSETS)
+      : requestedAssets;
+  let initialSeries: AssetSeriesDto[] | null = null;
+
+  if (selectedAssets.length >= MIN_CHART_ASSETS) {
+    try {
+      const seriesResult = await getComparisonSeries({ symbols: selectedAssets, period });
+      initialSeries = seriesResult.series;
+    } catch (error) {
+      if (error instanceof InvalidAssetSelectionError) {
+        selectedAssets = [];
+      } else {
+        throw error;
+      }
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
@@ -96,6 +141,9 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           initialSortDir={sortDir}
           initialSelectedClasses={selectedClasses}
           assetClasses={assetClasses}
+          assets={assets}
+          initialSelectedAssets={selectedAssets}
+          initialSeries={initialSeries}
         />
       </Suspense>
     </div>
