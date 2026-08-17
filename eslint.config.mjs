@@ -47,5 +47,13 @@ export default tseslint.config(
       globals: { ...globals.node },
     },
   },
+  {
+    // Kök seviye CommonJS config dosyaları (postcss.config.js vb.) — Node runtime'da
+    // çalışır, `module`/`require` gibi CJS global'lerine ihtiyaç duyar.
+    files: ['**/*.config.js'],
+    languageOptions: {
+      globals: { ...globals.node },
+    },
+  },
   eslintConfigPrettier,
 );
