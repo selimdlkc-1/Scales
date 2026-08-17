@@ -1,6 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    // Kök tsconfig.base.json yalnızca ES2022 (apps/worker, packages/core — DOM'suz
+    // Node runtime). apps/web tarayıcıda çalışan component'ler içerir (Faz 4) —
+    // HTMLButtonElement/HTMLTableCellElement gibi DOM tipleri burada eklenir.
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "preserve",
