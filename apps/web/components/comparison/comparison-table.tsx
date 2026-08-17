@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   createColumnHelper,
   flexRender,
@@ -112,10 +113,21 @@ export interface ComparisonTableProps {
  * senkron tutulması üst seviyenin (app/comparison-panel.tsx) sorumluluğudur.
  */
 export function ComparisonTable({ rows, sortBy, sortDir, onSortChange }: ComparisonTableProps) {
-  const availableRows = rows.filter((row) => row.status === 'ok');
-  const unavailableRows = rows.filter((row) => row.status === 'unavailable');
+  // `useMemo` ZORUNLU — Faz 4 §4.5 Playwright smoke e2e'siyle keşfedilen gerçek
+  // bug: `rows.filter(...)`'ın her render'da ürettiği YENİ (referansça kararsız)
+  // array, `useReactTable`'ın `data` girdisine geçildiğinde ve sonuç 0 eleman
+  // (tüm satırlar `status='unavailable'`, ör. worker henüz hiç çalışmamışsa)
+  // olduğunda `@tanstack/react-table` v8.21.3 + React 19'da sonsuz render
+  // döngüsüne giriyor (TanStack/table#6002 ile aynı sınıf — "empty data array
+  // without a stable reference"), tarayıcı sekmesini tamamen kilitliyor. `rows`
+  // değişmediği sürece aynı referansı koruyarak bu döngü engellenir.
+  const availableRows = useMemo(() => rows.filter((row) => row.status === 'ok'), [rows]);
+  const unavailableRows = useMemo(() => rows.filter((row) => row.status === 'unavailable'), [rows]);
 
-  const sorting: SortingState = [{ id: SORTABLE_COLUMN_IDS[sortBy], desc: sortDir === 'desc' }];
+  const sorting: SortingState = useMemo(
+    () => [{ id: SORTABLE_COLUMN_IDS[sortBy], desc: sortDir === 'desc' }],
+    [sortBy, sortDir],
+  );
 
   const table = useReactTable({
     data: availableRows,
