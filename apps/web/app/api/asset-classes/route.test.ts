@@ -2,13 +2,18 @@
 // zincirinin tamamını (mock'suz) egzersiz eder (docs/08_TESTING_STRATEGY.md §1).
 // `asset_classes` Faz 1 §1.3 seed'iyle statik doldurulur — bu test kendi veri
 // seti yazmaz, mevcut referans veriyi salt okur.
+import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
 
 import { GET } from './route.js';
 
+function makeRequest(): NextRequest {
+  return new NextRequest('http://localhost/api/asset-classes');
+}
+
 describe('GET /api/asset-classes', () => {
   it('200 döner, 4 satırı sort_order sıralı içerir, envelope + cache header doğru', async () => {
-    const response = await GET();
+    const response = await GET(makeRequest());
 
     expect(response.status).toBe(200);
     expect(response.headers.get('Cache-Control')).toBe('public, max-age=86400');

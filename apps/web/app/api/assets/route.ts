@@ -1,63 +1,29 @@
-import { assetsQuerySchema } from '@terazi/core';
+import { assetsQuerySchema, type AssetsQuery } from '@terazi/core';
 import { NextResponse, type NextRequest } from 'next/server';
 
+import { buildMeta } from '../../../lib/middleware/response-envelope.js';
+import { withErrorHandling } from '../../../lib/middleware/with-error-handling.js';
+import { withRateLimit } from '../../../lib/middleware/with-rate-limit.js';
+import { withValidation } from '../../../lib/middleware/with-validation.js';
 import { getAssets } from '../../../lib/services/reference-data-service.js';
 
 // Route handler (controller katmanı) — query doğrulama (Zod) + servis çağrısı +
 // yanıt biçimlendirme, iş kuralı içermez (.claude/rules/10-backend-architecture.md).
 //
-// Bu iterasyonda merkezi `withValidation`/`withErrorHandling` middleware'i henüz
-// yok (İterasyon 5'te çıkarılır) — doğrulama/hata çevrimi burada geçici olarak
-// inline yapılır (docs/10_IMPLEMENTATION_ROADMAP.md §3.1).
-
-/** `meta.requestId` — log korelasyonu için rastgele kısa kimlik (docs/03_API_CONTRACTS.md §2). */
-function generateRequestId(): string {
-  return crypto.randomUUID().replace(/-/g, '').slice(0, 8);
-}
+// Doğrulama/rate limit/hata çevrimi artık merkezi middleware zincirinde
+// (docs/04_BACKEND_SPEC.md §4, docs/10_IMPLEMENTATION_ROADMAP.md §3.5) — bu
+// route kendi ad-hoc `try/catch`/parse kodunu taşımaz.
 
 /** Kaynak: docs/03_API_CONTRACTS.md §5.1. */
 const CACHE_CONTROL = 'public, max-age=3600, stale-while-revalidate=86400';
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  const requestId = generateRequestId();
-  const generatedAt = new Date().toISOString();
+async function handler(_request: NextRequest, query: AssetsQuery): Promise<NextResponse> {
+  const data = await getAssets({ assetClass: query.assetClass });
 
-  const rawAssetClass = request.nextUrl.searchParams.get('assetClass');
-  const parsed = assetsQuerySchema.safeParse(
-    rawAssetClass === null ? {} : { assetClass: rawAssetClass },
+  return NextResponse.json(
+    { data, meta: buildMeta() },
+    { headers: { 'Cache-Control': CACHE_CONTROL } },
   );
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Geçersiz sorgu parametresi.',
-          details: { field: 'assetClass', received: rawAssetClass },
-        },
-        meta: { requestId, generatedAt },
-      },
-      { status: 400 },
-    );
-  }
-
-  try {
-    const data = await getAssets({ assetClass: parsed.data.assetClass });
-
-    return NextResponse.json(
-      { data, meta: { requestId, generatedAt } },
-      { headers: { 'Cache-Control': CACHE_CONTROL } },
-    );
-  } catch {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: 'Beklenmeyen bir hata oluştu.',
-        },
-        meta: { requestId, generatedAt },
-      },
-      { status: 500 },
-    );
-  }
 }
+
+export const GET = withErrorHandling(withRateLimit(withValidation(assetsQuerySchema, handler)));
