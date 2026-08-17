@@ -8,7 +8,7 @@ import { AssetClassFilter } from '@/components/comparison/asset-class-filter';
 import { AssetSelector, MAX_ASSETS, MIN_ASSETS } from '@/components/comparison/asset-selector';
 import { ComparisonTable } from '@/components/comparison/comparison-table';
 import { PeriodSelector } from '@/components/comparison/period-selector';
-import { Button } from '@/components/ui/button';
+import { DataState, type DataStateStatus } from '@/components/ui/data-state';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ComparisonFetchError, fetchComparison } from '@/lib/fetchers/comparison-fetcher';
 import { SeriesFetchError, fetchSeries } from '@/lib/fetchers/series-fetcher';
@@ -211,6 +211,24 @@ export function ComparisonPanel({
 
   const hasEnoughAssetsForChart = selectedAssets.length >= MIN_ASSETS;
 
+  // `DataState` (docs/06_SCREEN_CATALOG.md §6, docs/05_FRONTEND_SPEC.md §4) —
+  // hata her zaman `loading`/`empty`'den önceliklidir (önceki veri banner
+  // altında kalmaya devam eder), `empty` yalnızca hata yokken ve seçili
+  // filtre kombinasyonu için hiç satır kalmadığında devreye girer.
+  const tableStatus: DataStateStatus = error
+    ? 'error'
+    : isPending
+      ? 'loading'
+      : visibleRows.length === 0
+        ? 'empty'
+        : 'success';
+
+  const chartStatus: DataStateStatus = seriesError
+    ? 'error'
+    : isSeriesPending || !seriesData
+      ? 'loading'
+      : 'success';
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -222,23 +240,14 @@ export function ComparisonPanel({
         <PeriodSelector value={period} onChange={handlePeriodChange} />
       </div>
 
-      {error && (
-        <div className="flex items-center justify-between rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          <span>{error}</span>
-          <Button variant="outline" size="sm" onClick={handleRetry}>
-            Tekrar dene
-          </Button>
-        </div>
-      )}
-
-      <div className={isPending ? 'opacity-60 transition-opacity' : undefined}>
+      <DataState status={tableStatus} error={error} onRetry={handleRetry}>
         <ComparisonTable
           rows={visibleRows}
           sortBy={sortBy}
           sortDir={sortDir}
           onSortChange={handleSortChange}
         />
-      </div>
+      </DataState>
 
       <div className="space-y-3 border-t pt-6">
         <AssetSelector
@@ -248,24 +257,13 @@ export function ComparisonPanel({
         />
 
         {hasEnoughAssetsForChart && (
-          <>
-            {seriesError ? (
-              <div className="flex items-center justify-between rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-                <span>{seriesError}</span>
-                <Button variant="outline" size="sm" onClick={handleSeriesRetry}>
-                  Tekrar dene
-                </Button>
-              </div>
+          <DataState status={chartStatus} error={seriesError} onRetry={handleSeriesRetry}>
+            {seriesData ? (
+              <ReturnChart series={seriesData} />
             ) : (
-              <div className={isSeriesPending ? 'opacity-60 transition-opacity' : undefined}>
-                {seriesData ? (
-                  <ReturnChart series={seriesData} />
-                ) : (
-                  <Skeleton className="h-72 w-full" />
-                )}
-              </div>
+              <Skeleton className="h-72 w-full" />
             )}
-          </>
+          </DataState>
         )}
       </div>
     </div>
