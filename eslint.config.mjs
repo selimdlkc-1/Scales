@@ -25,6 +25,12 @@ export default tseslint.config(
       // tek kelime oldukları için bu kuralla çakışmaz; dinamik route segmentleri
       // ([id], [...slug]) klasör adıdır, bu kural yalnızca dosya adını denetler.
       'unicorn/filename-case': ['error', { case: 'kebabCase' }],
+      // `_` önekli parametreler kasıtlı olarak kullanılmaz — middleware zinciri
+      // (docs/04_BACKEND_SPEC.md §4) `(request: NextRequest) => ...` imzasını
+      // handler'lar arası tutarlı tutmak için `request`'i gerektirir, ancak bazı
+      // handler'lar (örn. `GET /api/asset-classes` — parametresiz endpoint) onu
+      // gövdesinde kullanmaz.
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     },
   },
   {

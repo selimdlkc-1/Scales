@@ -7,9 +7,9 @@ import { describe, expect, it } from 'vitest';
 
 import { GET } from './route.js';
 
-function makeRequest(query?: string): NextRequest {
+function makeRequest(query?: string, ip?: string): NextRequest {
   const url = query ? `http://localhost/api/assets?${query}` : 'http://localhost/api/assets';
-  return new NextRequest(url);
+  return new NextRequest(url, { headers: ip ? { 'x-forwarded-for': ip } : undefined });
 }
 
 describe('GET /api/assets', () => {
@@ -56,5 +56,29 @@ describe('GET /api/assets', () => {
 
     expect(body.error.code).toBe('VALIDATION_ERROR');
     expect(body.error.details).toEqual({ field: 'assetClass', received: 'stock' });
+  });
+
+  // docs/08_TESTING_STRATEGY.md §4 "Rate limit eşiği aşımı" — merkezi
+  // `withRateLimit` (docs/03_API_CONTRACTS.md §6, IP başına dk 60 istek)
+  // gerçek zaman beklenmeden, aynı IP'den ardışık isteklerle tetiklenir.
+  // Sayaç deposu `lib/middleware/with-rate-limit.ts`'te modül-seviyesi
+  // paylaşımlıdır — bu dosyadaki diğer testlerle çakışmaması için özel bir
+  // `x-forwarded-for` IP'si kullanılır (bkz. dosya başı desen).
+  it('IP başına dakikada 60 istek limiti aşılırsa 429 RATE_LIMITED + Retry-After döner', async () => {
+    const ip = 'rate-limit-test-assets';
+
+    for (let i = 0; i < 60; i += 1) {
+      const response = await GET(makeRequest(undefined, ip));
+      expect(response.status).toBe(200);
+    }
+
+    const limited = await GET(makeRequest(undefined, ip));
+
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
+
+    const body = (await limited.json()) as { error: { code: string }; meta: { requestId: string } };
+    expect(body.error.code).toBe('RATE_LIMITED');
+    expect(body.meta.requestId).toEqual(expect.any(String));
   });
 });
