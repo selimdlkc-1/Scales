@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 
 import './globals.css';
 
@@ -19,7 +20,18 @@ export const metadata: Metadata = {
 //   `DisclaimerFooter` içermez, S-HOME'a geri link vermez ([AP-002] tek yönlü navigasyon).
 // Bu ayrım olmadan kök layout'un sabit header/footer'ı `/admin`'e de sızar ve docs'taki
 // "operatör paneli navigasyon/DisclaimerFooter içermez" gereksinimini ihlal eder.
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+//
+// `headers()` çağrısı (İterasyon 3, §5.3, docs/07_SECURITY_IMPLEMENTATION.md §7) —
+// `middleware.ts`'in ürettiği `x-nonce` istek header'ını okur. Değer burada
+// ayrıca kullanılmaz; Next.js App Router'ın resmi nonce tabanlı CSP deseninde
+// bu okumanın kendisi, Next'in kendi ürettiği `<script>`/hydration
+// etiketlerine nonce'u otomatik uygulaması için gereklidir
+// (https://nextjs.org/docs/app/guides/content-security-policy) — okunmazsa
+// `script-src`'deki nonce ile sayfanın gerçek script'leri eşleşmez, tarayıcı
+// hepsini bloke eder (bkz. PR #26 E2E regresyonu).
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  await headers();
+
   return (
     <html lang="tr">
       <body className="bg-background text-foreground antialiased">{children}</body>

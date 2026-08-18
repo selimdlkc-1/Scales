@@ -124,6 +124,7 @@ Kural: Route handler'lar `try/catch` ile kendi hata çevrimini yapmaz — `withE
 | `COINGECKO_API_KEY` | worker | Gizli (opsiyonel) | Ücretsiz katmanda zorunlu olmayabilir; varsa rate limit'i artırır |
 | `OPERATOR_USERNAME` | web | Gizli | Operatör paneli Basic Auth kullanıcı adı ([AP-002]) |
 | `OPERATOR_PASSWORD` | web | Gizli | Operatör paneli Basic Auth şifresi ([AP-002]) |
+| `APP_ORIGIN` | web | Public | Production frontend origin'i (örn. `https://terazi.vercel.app`) — `next.config.ts` `headers()`'daki CORS `Access-Control-Allow-Origin` değeri için kullanılır ([SEC-004]); tanımsızsa header hiç eklenmez (wildcard'a düşülmez) |
 | `NODE_ENV` | web, worker | Public | `development` \| `staging` \| `production` |
 | `LOG_LEVEL` | web, worker | Public | Varsayılan `info`, local'de `debug` |
 
