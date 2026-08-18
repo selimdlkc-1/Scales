@@ -44,3 +44,17 @@ export function formatDate(value: string | null): string {
 
   return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium' }).format(new Date(value));
 }
+
+/**
+ * ISO tarih-saat (`"2026-08-10T18:32:10Z"`) → Türkçe kısa tarih + saat.
+ * `S-OPERATOR-PANEL`'in kaynak sağlık kartlarındaki "son başarılı çalışma
+ * zamanı" alanı için (docs/06_SCREEN_CATALOG.md §4) — yalnızca tarih değil,
+ * saat de operatör için anlamlıdır (job'lar günde birden fazla kez çalışabilir).
+ */
+export function formatDateTime(value: string | null): string {
+  if (value === null) return MISSING_VALUE_LABEL;
+
+  return new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(
+    new Date(value),
+  );
+}

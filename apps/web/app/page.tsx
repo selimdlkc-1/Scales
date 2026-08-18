@@ -1,7 +1,9 @@
 import { Suspense } from 'react';
+import Link from 'next/link';
 
 import { InvalidAssetSelectionError } from '@terazi/core';
 
+import { DisclaimerFooter } from '@/components/ui/disclaimer-footer';
 import type { AssetSeriesDto } from '@/lib/fetchers/series-fetcher';
 import { getComparison } from '@/lib/services/comparison-service';
 import type {
@@ -125,27 +127,45 @@ export default async function HomePage({ searchParams }: HomePageProps) {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 px-4 py-8">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Terazi</h1>
-        <p className="text-sm text-muted-foreground">
-          Döviz, gram altın, kripto ve yatırım fonlarının TL bazında reel getirisini karşılaştırın.
-        </p>
-      </div>
+    <div className="flex min-h-screen flex-col">
+      {/* S-HOME'a özel site kabuğu (docs/06_SCREEN_CATALOG.md §2, §6) — kök
+          `app/layout.tsx` bilinçli olarak sadedir (yalnızca html/body/global stil);
+          header + `DisclaimerFooter` burada, yalnızca bu sayfada render edilir.
+          `S-OPERATOR-PANEL` (`app/admin/layout.tsx`) bunları içermez ve buraya
+          geri link vermez ([AP-002] tek yönlü navigasyon). */}
+      <header className="border-b">
+        <div className="mx-auto flex max-w-5xl items-center px-4 py-4">
+          <Link href="/" className="text-lg font-semibold tracking-tight">
+            Terazi
+          </Link>
+        </div>
+      </header>
 
-      <Suspense fallback={<p className="text-sm text-muted-foreground">Yükleniyor…</p>}>
-        <ComparisonPanel
-          initialResult={comparisonResult}
-          initialPeriod={period}
-          initialSortBy={sortBy}
-          initialSortDir={sortDir}
-          initialSelectedClasses={selectedClasses}
-          assetClasses={assetClasses}
-          assets={assets}
-          initialSelectedAssets={selectedAssets}
-          initialSeries={initialSeries}
-        />
-      </Suspense>
+      <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-8">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Terazi</h1>
+          <p className="text-sm text-muted-foreground">
+            Döviz, gram altın, kripto ve yatırım fonlarının TL bazında reel getirisini
+            karşılaştırın.
+          </p>
+        </div>
+
+        <Suspense fallback={<p className="text-sm text-muted-foreground">Yükleniyor…</p>}>
+          <ComparisonPanel
+            initialResult={comparisonResult}
+            initialPeriod={period}
+            initialSortBy={sortBy}
+            initialSortDir={sortDir}
+            initialSelectedClasses={selectedClasses}
+            assetClasses={assetClasses}
+            assets={assets}
+            initialSelectedAssets={selectedAssets}
+            initialSeries={initialSeries}
+          />
+        </Suspense>
+      </main>
+
+      <DisclaimerFooter />
     </div>
   );
 }

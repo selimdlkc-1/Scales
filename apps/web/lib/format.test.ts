@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatDate, formatPercent, formatPrice } from './format';
+import { formatDate, formatDateTime, formatPercent, formatPrice } from './format';
 
 describe('formatPercent', () => {
   it('formats a positive ratio with an explicit + sign', () => {
@@ -33,5 +33,18 @@ describe('formatDate', () => {
 
   it('returns the missing-value placeholder for null', () => {
     expect(formatDate(null)).toBe('—');
+  });
+});
+
+describe('formatDateTime', () => {
+  it('formats an ISO date-time as a Turkish medium date with a time component', () => {
+    const result = formatDateTime('2026-08-10T18:32:10Z');
+    expect(result).toContain('2026');
+    // Saat bileşeni gerçekten mevcut mu — `formatDate`'ten (yalnızca tarih) farkı bu.
+    expect(result).toMatch(/\d{1,2}[:.]\d{2}/);
+  });
+
+  it('returns the missing-value placeholder for null', () => {
+    expect(formatDateTime(null)).toBe('—');
   });
 });
