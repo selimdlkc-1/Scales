@@ -92,7 +92,13 @@ KVKK'ya konu bir kişisel veri sınıfı **yoktur** çünkü v1'de kişisel veri
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains` (Vercel/Railway HTTPS'i zaten zorunlu kılar, bu başlık tarayıcıya pekiştirir) |
 | `CORS` | Yalnızca kendi frontend origin'ine izin verilir (`Access-Control-Allow-Origin` production domain'i ile sabitlenir); wildcard (`*`) kullanılmaz |
 
-Bu başlıklar Next.js `next.config.js` içindeki `headers()` fonksiyonu ile tüm route'lara merkezi olarak uygulanır — her route handler kendi başlıklarını elle eklemez.
+`Content-Security-Policy` HARİÇ tüm başlıklar Next.js `next.config.js` içindeki `headers()` fonksiyonu ile tüm route'lara merkezi olarak uygulanır — her route handler kendi başlıklarını elle eklemez.
+
+`Content-Security-Policy` istisnadır: Next.js App Router'ın kendi ürettiği RSC hydration script'leri (`self.__next_f.push(...)`) inline'dır ve `script-src`'de `'unsafe-inline'` kullanılması yasak olduğu için (bu tablonun üstündeki satır), `next.config.js`'in statik `headers()`'ı ile CSP üretilemez — statik bir CSP, Next.js'in kendi script'lerini de bloke eder (2026-08-18, İterasyon 3/§5.3'te E2E smoke testleriyle doğrulandı). Bunun yerine CSP, `apps/web/middleware.ts`'te HER istekte taze bir nonce ile üretilir (`script-src 'self' 'nonce-<rastgele>' 'strict-dynamic'`) — Next.js'in resmi nonce tabanlı CSP deseni (bkz. Next.js docs "Content Security Policy"). Middleware tüm route'larda çalışır (yalnızca `_next/static`/`_next/image`/`favicon.ico` hariç), böylece CSP hâlâ TEK merkezden (bu middleware) üretilir, route bazında ayrıca tanımlanmaz (`.claude/rules/03-security-baseline.md` kontrol #6 ile tutarlı — merkezi nokta `next.config.js`'ten `middleware.ts`'e kaydı).
+
+İki ek nokta (İterasyon 3/§5.3'te E2E ile doğrulandı, PR #26):
+- **`'strict-dynamic'` zorunlu:** `next/dynamic` ile lazy-load edilen chunk'lar (ör. `ReturnChart`/Recharts, `05_FRONTEND_SPEC.md` bundle boyutu için lazy-load) webpack'in çalışma zamanı chunk loader'ı tarafından SONRADAN enjekte edilir ve nonce TAŞIMAZ; `'strict-dynamic'` olmadan tarayıcı bu chunk'ları bloke eder.
+- **`'unsafe-eval'` yalnızca `NODE_ENV=development`'ta eklenir:** `next dev`'in Fast Refresh'i modülleri `eval()` ile sarar (yalnızca geliştirme sunucusu, `next build`/`next start`'ta YOKTUR). Bu olmadan `next dev` kullanan her ortam (lokal geliştirme, Playwright smoke e2e) tüm client-side JS'i CSP ihlaliyle bloke eder. Production'da asla eklenmez.
 
 ## 8. Rate Limiting ve Brute-Force Koruması
 

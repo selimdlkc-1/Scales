@@ -1,24 +1,25 @@
 import type { NextConfig } from 'next';
 
 /**
- * HTTP güvenlik başlıkları (docs/07_SECURITY_IMPLEMENTATION.md §7) — TEK
- * merkezden (`headers()`, aşağıda) tüm route'lara uygulanır; hiçbir route
+ * STATİK HTTP güvenlik başlıkları (docs/07_SECURITY_IMPLEMENTATION.md §7) —
+ * `headers()` (aşağıda) ile tüm route'lara merkezi uygulanır; hiçbir route
  * handler kendi başlığını elle eklemez (.claude/rules/03-security-baseline.md
  * zorunlu kontrol #6).
+ *
+ * `Content-Security-Policy` BURADA YOK — Next.js App Router'ın kendi RSC
+ * hydration script'leri (`self.__next_f.push(...)`) inline'dır ve
+ * `script-src`'de `'unsafe-inline'` KULLANILMASI YASAK olduğu için (docs/07
+ * §7, bu dosyanın önceki hali E2E smoke testlerini kırdı — bkz. PR #26), CSP
+ * her istekte taze bir nonce ile `apps/web/middleware.ts`'te üretilir (Next.js
+ * resmi nonce tabanlı CSP deseni). Diğer tüm statik başlıklar burada kalır.
  */
-const CONTENT_SECURITY_POLICY =
-  "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'";
-// `style-src 'unsafe-inline'` bilinçlidir — shadcn/ui (Radix tabanlı) bazı
-// bileşenler inline style kullanır (docs/07 §7). `script-src`'de ASLA
-// `'unsafe-inline'` eklenmez.
-
 interface SecurityHeader {
   key: string;
   value: string;
 }
 
 /**
- * CORS dahil tüm güvenlik başlıklarını üretir. `APP_ORIGIN` her çağrıda
+ * CORS dahil statik güvenlik başlıklarını üretir. `APP_ORIGIN` her çağrıda
  * (modül yüklenirken değil) okunur — `with-admin-auth.ts`/`middleware.ts`
  * ile aynı ilke (testte `vi.stubEnv` ile ezilebilir). Env var tanımsızsa
  * `Access-Control-Allow-Origin` header'ı hiç eklenmez — wildcard (`*`) asla
@@ -26,7 +27,6 @@ interface SecurityHeader {
  */
 export function buildSecurityHeaders(): SecurityHeader[] {
   const headers: SecurityHeader[] = [
-    { key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

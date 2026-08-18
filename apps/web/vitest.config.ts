@@ -30,10 +30,11 @@ export default defineConfig({
       'app/**/*.test.tsx',
       'lib/**/*.test.ts',
       'components/**/*.test.tsx',
-      // next.config.ts kök dizinde yaşar (İterasyon 3, §5.3 — merkezi güvenlik
-      // başlıkları) — app/lib/components altına taşınmaz, tek route bazlı
-      // tekrarı önlemek için next.config.ts'in kendisi tek merkezdir.
+      // next.config.ts ve middleware.ts kök dizinde yaşar (İterasyon 3, §5.3 —
+      // merkezi güvenlik başlıkları + CSP nonce) — app/lib/components altına
+      // taşınmaz, tek route bazlı tekrarı önlemek için ikisi de tek merkezdir.
       'next.config.test.ts',
+      'middleware.test.ts',
     ],
     coverage: {
       provider: 'v8',

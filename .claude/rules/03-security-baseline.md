@@ -9,7 +9,7 @@ Hedef seviye pragmatik/temel (OWASP Top 10 temel önlemleri); ağır uyum çerç
 3. Secrets (API key, operatör credential'ı) kod, log veya commit mesajına **asla** yazılmaz; log middleware'indeki maskeleme listesi (`OPERATOR_PASSWORD`, `OPERATOR_USERNAME`, `TCMB_EVDS_API_KEY`, `COINGECKO_API_KEY`, `Authorization`) yeni bir secret eklendiğinde güncellenir.
 4. Dış kaynaktan (TCMB/TEFAS/CoinGecko) gelen her yanıt DB'ye yazılmadan önce şema doğrulamasından geçer; doğrulama atlanmaz.
 5. Tüm SQL erişimi Prisma üzerinden, parametrik sorgu ile yapılır; ham string birleştirme (`$queryRawUnsafe`) yasaktır.
-6. Yeni bir response header/CORS değişikliği `next.config.js` merkezi konfigürasyonundan yapılır, route bazında ayrıca tanımlanmaz.
+6. Yeni bir response header/CORS değişikliği `next.config.js` merkezi konfigürasyonundan yapılır, route bazında ayrıca tanımlanmaz — **istisna: `Content-Security-Policy`**, Next.js'in inline RSC hydration script'leri yüzünden nonce gerektirir ve `apps/web/middleware.ts`'te (tüm route'ları kapsayan TEK merkez) üretilir, `next.config.js`'te değil (docs/07 §7, İterasyon 3/§5.3).
 
 ## Agent'ın yapmaması gerekenler ([CODE-001])
 
