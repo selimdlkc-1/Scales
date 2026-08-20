@@ -12,7 +12,7 @@
     "run:coingecko": "tsx src/entrypoints/run-coingecko.ts"
   },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.9.1",
     "@terazi/core": "workspace:*"
   },
   "devDependencies": {
