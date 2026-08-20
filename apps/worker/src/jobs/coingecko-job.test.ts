@@ -160,6 +160,26 @@ describe('runCoingeckoJob', () => {
     15_000,
   );
 
+  it("tüm coin'ler doğrulanamazsa (boş prices dizisi) job failed olur, hiçbir kayıt yazılmaz", async () => {
+    // coingeckoMarketChartResponseSchema `prices` için min(1) şartı koyar —
+    // 5 coin'in tamamı bu doğrulamadan geçemezse tek bir coin'in atlanmasından
+    // (partial) farklı olarak işlenebilir hiçbir kayıt kalmaz (failed).
+    mockedFetchCoingeckoMarketChart.mockResolvedValue({ prices: [] });
+
+    const result = await runCoingeckoJob();
+
+    expect(result.status).toBe('failed');
+    expect(result.recordsUpserted).toBe(0);
+
+    const jobRun = await prisma.jobRun.findUniqueOrThrow({ where: { id: result.jobRunId } });
+    expect(jobRun.status).toBe('failed');
+    expect(jobRun.errorMessage).toContain('İşlenebilir kayıt bulunamadı');
+    expect(jobRun.errorMessage).toContain('5 coin');
+
+    const priceCount = await prisma.assetPrice.count({ where: { assetId: { in: assetIds } } });
+    expect(priceCount).toBe(0);
+  });
+
   it('izlenen coingecko varlığı yoksa job failed olur, hiçbir kayıt yazılmaz', async () => {
     await prisma.asset.deleteMany({ where: { dataSource: 'coingecko' } });
 

@@ -165,6 +165,73 @@ describe('runTcmbJob', () => {
     expect(priceCount).toBe(0);
   });
 
+  it('pozitif olmayan (negatif/sıfır) fiyat veya TÜFE değeri şema doğrulamasından geçer ama job seviyesinde atlanır (partial)', async () => {
+    // tcmbEvdsItemSchema yalnızca "string|null" garantisi verir (catchall) —
+    // negatif/sıfır değerler Zod'dan geçer; job seviyesindeki
+    // parsePositiveDecimal'ın isFinite/lessThanOrEqualTo(0) kontrolü bu ek
+    // güvenlik ağını sağlar (docs/08_TESTING_STRATEGY.md §4).
+    mockedFetchTcmbSeries.mockResolvedValue({
+      items: [
+        {
+          Tarih: '05-08-2025',
+          TP_DK_USD_A_YTL: '-5,00',
+          TP_DK_EUR_A_YTL: '32,90',
+          TP_MK_ALTIN_YTL: '0,00',
+          TP_FG_J0: '0,00',
+        },
+      ],
+    });
+
+    const result = await runTcmbJob();
+
+    // Yalnızca EUR geçerli; USD negatif, altın sıfır, TÜFE sıfır — 3 kayıt atlanır.
+    expect(result.status).toBe('partial');
+    expect(result.recordsUpserted).toBe(1);
+
+    const jobRun = await prisma.jobRun.findUniqueOrThrow({ where: { id: result.jobRunId } });
+    expect(jobRun.status).toBe('partial');
+    expect(jobRun.errorMessage).toContain('3 kayıt');
+
+    const [usdAssetId, eurAssetId] = assetIds;
+    const eurPriceCount = await prisma.assetPrice.count({ where: { assetId: eurAssetId } });
+    expect(eurPriceCount).toBe(1);
+    const usdPriceCount = await prisma.assetPrice.count({ where: { assetId: usdAssetId } });
+    expect(usdPriceCount).toBe(0);
+
+    const cpiCount = await prisma.cpiIndex.count({ where: { periodMonth: CPI_PERIOD_MONTH } });
+    expect(cpiCount).toBe(0);
+  });
+
+  it('tüm kayıtlar geçersiz (negatif/sıfır) değer içerirse job failed olur, hiçbir kayıt yazılmaz', async () => {
+    mockedFetchTcmbSeries.mockResolvedValue({
+      items: [
+        {
+          Tarih: '05-08-2025',
+          TP_DK_USD_A_YTL: '-5,00',
+          TP_DK_EUR_A_YTL: '0,00',
+          TP_MK_ALTIN_YTL: '-10,00',
+          TP_FG_J0: '-100,00',
+        },
+      ],
+    });
+
+    const result = await runTcmbJob();
+
+    expect(result.status).toBe('failed');
+    expect(result.recordsUpserted).toBe(0);
+
+    const jobRun = await prisma.jobRun.findUniqueOrThrow({ where: { id: result.jobRunId } });
+    expect(jobRun.status).toBe('failed');
+    expect(jobRun.errorMessage).toContain('İşlenebilir kayıt bulunamadı');
+    expect(jobRun.errorMessage).toContain('4 kayıt');
+
+    const priceCount = await prisma.assetPrice.count({ where: { assetId: { in: assetIds } } });
+    expect(priceCount).toBe(0);
+
+    const cpiCount = await prisma.cpiIndex.count({ where: { periodMonth: CPI_PERIOD_MONTH } });
+    expect(cpiCount).toBe(0);
+  });
+
   it('aynı gün için iki kez çalıştırıldığında veri çoğalmaz (idempotent upsert)', async () => {
     mockedFetchTcmbSeries.mockResolvedValue(tcmbSuccessFixture);
 
