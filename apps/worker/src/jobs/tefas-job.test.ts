@@ -145,6 +145,34 @@ describe('runTefasJob', () => {
     },
   );
 
+  it("FIYAT şema doğrulamasından geçer (string '0.00') ama pozitif olmadığı için job seviyesinde atlanır (partial)", async () => {
+    // tefasFundRecordSchema'nın FIYAT string dalı yalnızca "\d+(\.\d+)?" ondalık
+    // formatını garanti eder, pozitiflik kontrolü yapmaz (yalnızca number dalı
+    // `.positive()` içerir) — job seviyesindeki parsePositiveDecimal bu ek
+    // güvenlik ağını sağlar (docs/08_TESTING_STRATEGY.md §4).
+    mockedFetchTefasHistory.mockResolvedValue({
+      data: [
+        { TARIH: '/Date(1754352000000)/', FONKODU: 'AFO', FIYAT: '0.00' },
+        { TARIH: '/Date(1754352000000)/', FONKODU: 'AAV', FIYAT: '12.50' },
+      ],
+    });
+
+    const result = await runTefasJob();
+
+    expect(result.status).toBe('partial');
+    expect(result.recordsUpserted).toBe(1);
+
+    const jobRun = await prisma.jobRun.findUniqueOrThrow({ where: { id: result.jobRunId } });
+    expect(jobRun.status).toBe('partial');
+    expect(jobRun.errorMessage).toContain('1 kayıt');
+
+    const [afoAssetId, aavAssetId] = assetIds;
+    const afoPriceCount = await prisma.assetPrice.count({ where: { assetId: afoAssetId } });
+    expect(afoPriceCount).toBe(0);
+    const aavPriceCount = await prisma.assetPrice.count({ where: { assetId: aavAssetId } });
+    expect(aavPriceCount).toBe(1);
+  });
+
   it('client sürekli başarısız olursa retry sonunda failed olarak işaretlenir, önceki veri korunur', async () => {
     mockedFetchTefasHistory.mockResolvedValue(tefasSuccessFixture);
     const firstRun = await runTefasJob();
