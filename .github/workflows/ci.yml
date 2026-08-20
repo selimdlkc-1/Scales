@@ -120,6 +120,49 @@ jobs:
       - name: Build
         run: pnpm -w build
 
+  dependency-scan:
+    name: Dependency Scan
+    runs-on: ubuntu-latest
+    # docs/08_TESTING_STRATEGY.md §7 madde 4, [SEC-008]: kritik/yüksek
+    # zafiyet build'i uyarır ama bloklamaz — bu yüzden lint/test/build
+    # zincirine `needs` ile bağlanmaz, bağımsız ve paralel çalışır.
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Dependency audit (production, kritik/yüksek zafiyet)
+        # --prod: gürültülü transitive dev-dependency zafiyetlerini dışarıda
+        # bırakır, yalnızca production'a giden bağımlılıklar taranır
+        # (iterasyon dosyası risk notu — minimal/gürültüsüz başlangıç).
+        # --audit-level=high: yalnızca high/critical zafiyetlerde adım
+        # "failure" outcome'u üretir. `continue-on-error: true`: bu outcome
+        # job'u/pipeline'ı asla kırmaz — sonuç yalnızca uyarı olarak kalır.
+        id: audit
+        continue-on-error: true
+        run: pnpm audit --prod --audit-level=high
+
+      - name: Audit sonucu (build bloklanmaz)
+        if: always()
+        run: |
+          if [ "${{ steps.audit.outcome }}" = "failure" ]; then
+            echo "## ⚠️ Dependency Scan: kritik/yüksek seviyeli zafiyet bulundu" >> "$GITHUB_STEP_SUMMARY"
+            echo "Detay için yukarıdaki 'Dependency audit' adımının log'una bakın. Build bloklanmadı ([SEC-008])." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## ✅ Dependency Scan: kritik/yüksek seviyeli zafiyet bulunamadı" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
   e2e:
     name: E2E Smoke
     runs-on: ubuntu-latest

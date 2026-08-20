@@ -1,0 +1,15 @@
+version: 2
+updates:
+  # pnpm workspace (apps/web, apps/worker, packages/core) tek bir kök
+  # pnpm-lock.yaml paylaşır — Dependabot'un pnpm workspace desteğinde tek bir
+  # "/" girdisi tüm workspace paketlerindeki (apps/*, packages/*) bağımlılık
+  # güncellemelerini kapsar. Her alt paket için ayrı bir directory girdisi
+  # açmak aynı kök lockfile'a karşı çakışan/yinelenen PR'lara yol açar —
+  # bu yüzden bilinçli olarak tek girdi kullanılır.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
