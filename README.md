@@ -85,16 +85,16 @@ docs/         # spec — tek doğruluk kaynağı
 
 ## Tech Stack
 
-| Katman | Teknoloji |
-| --- | --- |
-| Dil | TypeScript uçtan uca |
-| Frontend | Next.js (App Router), Tailwind CSS, shadcn/ui, Recharts, TanStack Table |
-| Backend | Next.js API Routes (düz REST, versiyonsuz) |
-| Worker | Ayrı Node.js process, cron-tetiklemeli |
-| Veritabanı | PostgreSQL 16+ · Prisma |
-| Doğrulama | Zod (API query + dış kaynak yanıt şeması, tek kaynak) |
-| Monorepo | pnpm workspaces |
-| Çalışma zamanı | Node.js 22 LTS, React 19, Prisma 5+ |
+| Katman         | Teknoloji                                                               |
+| -------------- | ----------------------------------------------------------------------- |
+| Dil            | TypeScript uçtan uca                                                    |
+| Frontend       | Next.js (App Router), Tailwind CSS, shadcn/ui, Recharts, TanStack Table |
+| Backend        | Next.js API Routes (düz REST, versiyonsuz)                              |
+| Worker         | Ayrı Node.js process, cron-tetiklemeli                                  |
+| Veritabanı     | PostgreSQL 16+ · Prisma                                                 |
+| Doğrulama      | Zod (API query + dış kaynak yanıt şeması, tek kaynak)                   |
+| Monorepo       | pnpm workspaces                                                         |
+| Çalışma zamanı | Node.js 22 LTS, React 19, Prisma 5+                                     |
 
 ## Local Kurulum
 
@@ -129,11 +129,11 @@ CI sırası (bloklayıcı): **lint → test → build**; bağımsız olarak
 **dependency taraması** (Dependabot + `pnpm audit`, kritik/yüksek zafiyet
 build'i bloklamaz, uyarır) ve **Playwright smoke e2e** çalışır.
 
-| Katman | Coverage hedefi |
-| --- | --- |
-| `packages/core` (hesaplama + şemalar) | %90+ |
-| `apps/web` | %60+ |
-| `apps/worker` | %60+ |
+| Katman                                | Coverage hedefi |
+| ------------------------------------- | --------------- |
+| `packages/core` (hesaplama + şemalar) | %90+            |
+| `apps/web`                            | %60+            |
+| `apps/worker`                         | %60+            |
 
 Detay: [`docs/08_TESTING_STRATEGY.md`](./docs/08_TESTING_STRATEGY.md).
 
@@ -148,20 +148,20 @@ analytics/error-tracking. Detay ve gerekçe: [`docs/mimari-kararlar.md`](./docs/
 Bu proje, kodlama agent'larının okuyup uygulayabileceği kapsamlı bir spec
 seti ile geliştirilir — tek doğruluk kaynağı [`docs/`](./docs):
 
-| Doküman | İçerik |
-| --- | --- |
-| [`mimari-kararlar.md`](./docs/mimari-kararlar.md) | Karar ID kaynağı (ADR'ler) |
-| [`00_PROJECT_OVERVIEW.md`](./docs/00_PROJECT_OVERVIEW.md) | Ürün tanımı, kapsam, kısıtlar |
-| [`01_DOMAIN_MODEL.md`](./docs/01_DOMAIN_MODEL.md) | Domain terminolojisi |
-| [`02_DATABASE_SCHEMA.md`](./docs/02_DATABASE_SCHEMA.md) | Veritabanı şeması |
-| [`03_API_CONTRACTS.md`](./docs/03_API_CONTRACTS.md) | REST sözleşmeleri |
-| [`04_BACKEND_SPEC.md`](./docs/04_BACKEND_SPEC.md) | Backend/worker mimarisi |
-| [`05_FRONTEND_SPEC.md`](./docs/05_FRONTEND_SPEC.md) | Frontend mimarisi |
-| [`06_SCREEN_CATALOG.md`](./docs/06_SCREEN_CATALOG.md) | Ekran kataloğu |
-| [`07_SECURITY_IMPLEMENTATION.md`](./docs/07_SECURITY_IMPLEMENTATION.md) | Güvenlik uygulaması |
-| [`08_TESTING_STRATEGY.md`](./docs/08_TESTING_STRATEGY.md) | Test stratejisi |
-| [`09_DEV_WORKFLOW.md`](./docs/09_DEV_WORKFLOW.md) | Geliştirme iş akışı |
-| [`10_IMPLEMENTATION_ROADMAP.md`](./docs/10_IMPLEMENTATION_ROADMAP.md) | Faz/iterasyon yol haritası |
+| Doküman                                                                 | İçerik                        |
+| ----------------------------------------------------------------------- | ----------------------------- |
+| [`mimari-kararlar.md`](./docs/mimari-kararlar.md)                       | Karar ID kaynağı (ADR'ler)    |
+| [`00_PROJECT_OVERVIEW.md`](./docs/00_PROJECT_OVERVIEW.md)               | Ürün tanımı, kapsam, kısıtlar |
+| [`01_DOMAIN_MODEL.md`](./docs/01_DOMAIN_MODEL.md)                       | Domain terminolojisi          |
+| [`02_DATABASE_SCHEMA.md`](./docs/02_DATABASE_SCHEMA.md)                 | Veritabanı şeması             |
+| [`03_API_CONTRACTS.md`](./docs/03_API_CONTRACTS.md)                     | REST sözleşmeleri             |
+| [`04_BACKEND_SPEC.md`](./docs/04_BACKEND_SPEC.md)                       | Backend/worker mimarisi       |
+| [`05_FRONTEND_SPEC.md`](./docs/05_FRONTEND_SPEC.md)                     | Frontend mimarisi             |
+| [`06_SCREEN_CATALOG.md`](./docs/06_SCREEN_CATALOG.md)                   | Ekran kataloğu                |
+| [`07_SECURITY_IMPLEMENTATION.md`](./docs/07_SECURITY_IMPLEMENTATION.md) | Güvenlik uygulaması           |
+| [`08_TESTING_STRATEGY.md`](./docs/08_TESTING_STRATEGY.md)               | Test stratejisi               |
+| [`09_DEV_WORKFLOW.md`](./docs/09_DEV_WORKFLOW.md)                       | Geliştirme iş akışı           |
+| [`10_IMPLEMENTATION_ROADMAP.md`](./docs/10_IMPLEMENTATION_ROADMAP.md)   | Faz/iterasyon yol haritası    |
 
 Agent çalışma kuralları için: [`CLAUDE.md`](./CLAUDE.md), [`.claude/rules/`](./.claude/rules/), [`.claude/skills/`](./.claude/skills/).
 
